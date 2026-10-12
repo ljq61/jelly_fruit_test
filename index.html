@@ -252,7 +252,7 @@ struct U {
  const fallback=document.getElementById("fallback");
  const status=document.getElementById("status");
  if(!navigator.gpu){fallback.classList.add("on");return;}
- let firstFrame=false;
+ let firstFrame=false,softwareFallback=false;
  window.__citrusRuntime={state:'initializing',frames:0,device:null,lastError:null};
  const report=(label,error)=>{
    const detail=error?.message||String(error||'Unknown GPU error');
@@ -260,8 +260,12 @@ struct U {
    window.__citrusRuntime.lastError=label+': '+detail;
    console.error('[Citrus]',label,detail,error);
    status.textContent=label.toUpperCase()+': '+detail.slice(0,110);
-   // Keep the exact failure readable rather than leaving a black surface.
-   if(!firstFrame){
+   // Recover from post-start device loss without leaving the user with a black canvas.
+   if(firstFrame){
+     softwareFallback=true;
+     window.__citrusRuntime.state='fallback2d';
+     status.textContent='COMPATIBILITY RENDERING / GPU RECOVERY';
+   }else{
      fallback.classList.add('on');
      fallback.querySelector('h2').textContent='WEBGPU COULD NOT START.';
      fallback.querySelector('p').textContent=label+': '+detail+' — Please try the latest Chrome or Edge.';
@@ -811,6 +815,115 @@ struct U {
    else if(key==="n")nudge();
    else if(key==="r")reset();
  });
+
+ // Soft-body CPU rescue renderer shares the existing XPBD simulation and picking.
+ // Used only after a previously working GPU device is lost.
+ const rescue=document.createElement('canvas');
+ rescue.setAttribute('aria-hidden','true');
+ rescue.style.cssText='display:none;position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none';
+ canvas.after(rescue);
+ const rctx=rescue.getContext('2d',{alpha:false});
+ function renderRecovery(){
+   const w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight;
+   const dpr=Math.min(devicePixelRatio||1,1.6);
+   if(rescue.width!==Math.round(w*dpr)||rescue.height!==Math.round(h*dpr)){
+     rescue.width=Math.round(w*dpr);rescue.height=Math.round(h*dpr);
+   }
+   rescue.style.display='block';
+   const ctx=rctx;ctx.setTransform(dpr,0,0,dpr,0,0);
+   ctx.clearRect(0,0,w,h);
+   const paper=ctx.createLinearGradient(0,0,w,h);
+   paper.addColorStop(0,'#f4f2ec');paper.addColorStop(.58,'#eeede6');paper.addColorStop(1,'#dad9d1');
+   ctx.fillStyle=paper;ctx.fillRect(0,0,w,h);
+   const aspect=w/h,sh=Math.max(1.64,1.70/aspect),sw=sh*aspect,scale=h/(2*sh);
+   const proj=p=>{
+     const d=sub(p,eye);
+     return [w*(.5+dot(d,right)/(2*sw)),h*(.5-dot(d,up)/(2*sh))];
+   };
+   const colors=[
+     ['#ffad36','#fff1bb','#e87822'],
+     ['#ed4b65','#fff0c9','#ad3250'],
+     ['#f8e96b','#fff9cd','#dcc630']
+   ][fruit];
+   const floor=proj([0,FLOOR,0]);
+   ctx.save();ctx.translate(floor[0]+.06*scale,floor[1]+.18*scale);ctx.scale(1,.29);
+   const shadow=ctx.createRadialGradient(0,0,3,0,0,scale*1.65);
+   shadow.addColorStop(0,'rgba(130,90,46,.29)');shadow.addColorStop(.5,'rgba(167,131,83,.12)');
+   shadow.addColorStop(1,'rgba(110,90,73,0)');
+   ctx.fillStyle=shadow;ctx.beginPath();ctx.arc(0,0,scale*1.65,0,Math.PI*2);ctx.fill();ctx.restore();
+   updateSkin();
+   const arc=[];
+   for(let i=0;i<=36;i++){
+     const j=(2*n2+i)*3;
+     arc.push(proj([positions[j],positions[j+1],positions[j+2]]));
+   }
+   const outline=()=>{
+     ctx.beginPath();ctx.moveTo(...arc[0]);
+     for(let i=1;i<arc.length;i++)ctx.lineTo(...arc[i]);
+   };
+   const contour=()=>{outline();ctx.closePath();};
+   const xs=arc.map(p=>p[0]),ys=arc.map(p=>p[1]);
+   const left=Math.min(...xs),top=Math.min(...ys),rightEdge=Math.max(...xs),bottom=Math.max(...ys);
+   ctx.save();contour();ctx.shadowColor='rgba(104,76,38,.25)';ctx.shadowBlur=scale*.15;
+   ctx.shadowOffsetY=scale*.055;ctx.fillStyle=colors[2];ctx.fill();ctx.restore();
+   ctx.save();contour();ctx.clip();
+   const fill=ctx.createLinearGradient(left,top,rightEdge,bottom);
+   fill.addColorStop(0,colors[1]);fill.addColorStop(.20,colors[0]);fill.addColorStop(.76,colors[0]);
+   fill.addColorStop(1,colors[2]);
+   ctx.fillStyle=fill;ctx.fillRect(left-2,top-2,rightEdge-left+4,bottom-top+4);
+   const center=proj(positions.subarray(2*n2*3,2*n2*3+3));
+   for(let k=1;k<8;k++){
+     const p=arc[Math.round(k*36/8)];
+     ctx.beginPath();ctx.moveTo(...center);ctx.lineTo(...p);
+     ctx.strokeStyle='rgba(255,252,227,.84)';ctx.lineWidth=Math.max(2,scale*.036);ctx.stroke();
+   }
+   const sample=(x,y)=>{
+     let best=1e10,id=2*n2;
+     for(let i=0;i<n2;i++){
+       const j=(2*n2+i)*3,dx=rest[j]-x,dy=rest[j+1]-y,d=dx*dx+dy*dy;
+       if(d<best){best=d;id=2*n2+i;}
+     }
+     const j=id*3;
+     return proj([x+positions[j]-rest[j],y+positions[j+1]-rest[j+1],DEPTH+positions[j+2]-rest[j+2]]);
+   };
+   for(let i=0;i<44;i++){
+     const angle=((i*.6180339+.13)%1)*Math.PI,r=.24+((i*.754878)%1)*1.12;
+     const p=sample(Math.cos(angle)*r,BASE+Math.sin(angle)*r);
+     ctx.beginPath();ctx.arc(p[0],p[1],1.2+(i%4)*.5,0,2*Math.PI);
+     ctx.fillStyle='rgba(255,255,255,.23)';ctx.fill();ctx.lineWidth=.8;
+     ctx.strokeStyle='rgba(255,255,242,.72)';ctx.stroke();
+     ctx.fillStyle='rgba(255,255,255,.83)';ctx.fillRect(p[0]-1,p[1]-1,1,1);
+   }
+   const seedLocations=[[-.59,-.49],[.31,-.34],[.68,-.64],[-.14,-.23],[-.79,-.71]];
+   for(const [i,s] of seedLocations.entries()){
+     const p=sample(...s);
+     ctx.save();ctx.translate(...p);ctx.rotate(i*.89+.2);
+     ctx.beginPath();ctx.ellipse(0,0,scale*.027,scale*.052,0,0,2*Math.PI);
+     ctx.fillStyle='#ffeaaf';ctx.fill();ctx.restore();
+   }
+   const sheen=ctx.createRadialGradient(left+(rightEdge-left)*.25,top+(bottom-top)*.05,2,
+      left+(rightEdge-left)*.25,top+(bottom-top)*.05,scale*1.28);
+   sheen.addColorStop(0,'rgba(255,255,255,.36)');sheen.addColorStop(1,'rgba(255,255,255,0)');
+   ctx.fillStyle=sheen;ctx.fillRect(left,top,rightEdge-left,bottom-top);
+   ctx.restore();
+   ctx.lineCap='round';ctx.lineJoin='round';
+   outline();ctx.strokeStyle=colors[2];ctx.lineWidth=Math.max(6,scale*.07);ctx.stroke();
+   outline();ctx.strokeStyle=colors[1];ctx.lineWidth=Math.max(4,scale*.045);ctx.stroke();
+   outline();ctx.strokeStyle='rgba(255,255,249,.77)';ctx.lineWidth=Math.max(1,scale*.012);ctx.stroke();
+   ctx.beginPath();ctx.moveTo(...arc[36]);ctx.lineTo(...arc[0]);
+   ctx.strokeStyle='rgba(255,249,224,.88)';ctx.lineWidth=1.4;ctx.stroke();
+   if(debug){
+     ctx.save();ctx.lineWidth=.65;ctx.strokeStyle='rgba(44,65,42,.22)';
+     for(const [a,b] of edges){
+       const ia=a*3,ib=b*3;
+       ctx.beginPath();ctx.moveTo(...proj(positions.subarray(ia,ia+3)));
+       ctx.lineTo(...proj(positions.subarray(ib,ib+3)));ctx.stroke();
+     }
+     ctx.restore();
+   }
+   window.__citrusRuntime.frames++;
+   window.__citrusRuntime.state='fallback2d';
+ }
  let last=performance.now();
  reset();
  function frame(now){
@@ -823,8 +936,12 @@ struct U {
        for(let i=0;i<substeps;i++)step(subDt);
        acc-=1/60;ticks++;
      }
-     render();
-   }catch(err){report("Render failure",err);return;}
+     if(softwareFallback)renderRecovery();else render();
+   }catch(err){
+     report("Render failure",err);
+     if(softwareFallback)try{renderRecovery();}catch(e){console.error('Recovery failed',e);return;}
+     else return;
+   }
    requestAnimationFrame(frame);
  }
  requestAnimationFrame(frame);
