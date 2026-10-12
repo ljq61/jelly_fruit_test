@@ -34,6 +34,46 @@ jobs:
           print("Self-contained HTML: passed")
           PY
           node --check /tmp/citrus-jelly-app.js
+      - name: Browser runtime and WGSL smoke test
+        run: |
+          npm install --silent --no-audit --no-fund --prefix /tmp/citrus-qa puppeteer-core@24
+          python3 -m http.server 8100 >/tmp/citrus-server.log 2>&1 &
+          node <<'JS'
+          const puppeteer=require('/tmp/citrus-qa/node_modules/puppeteer-core');
+          const fs=require('fs');
+          (async()=>{
+            const bin=['/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
+            if(!bin){console.log('Chromium unavailable, browser check skipped');return;}
+            const browser=await puppeteer.launch({executablePath:bin,headless:true,args:['--no-sandbox','--enable-unsafe-webgpu','--enable-features=Vulkan','--use-angle=swiftshader','--disable-dev-shm-usage']});
+            try{
+              const page=await browser.newPage();
+              const errors=[];
+              page.on('pageerror',e=>errors.push('JS: '+e.message));
+              page.on('console',m=>{if(m.type()==='error')errors.push('Console: '+m.text());});
+              await page.goto('http://127.0.0.1:8100',{waitUntil:'load'});
+              await new Promise(r=>setTimeout(r,5000));
+              const result=await page.evaluate(async()=>{
+                const info={webgpu:!!navigator.gpu,fallback:document.getElementById('fallback').classList.contains('on'),canvasSize:[stage.width,stage.height],shaders:[]};
+                if(!navigator.gpu)return info;
+                const adapter=await navigator.gpu.requestAdapter();
+                if(!adapter){info.adapter=false;return info;}
+                info.adapter=true;
+                const device=await adapter.requestDevice();
+                for(const source of document.querySelectorAll('script[type="text/plain"]')){
+                  const messages=(await device.createShaderModule({code:source.textContent}).getCompilationInfo()).messages;
+                  info.shaders.push({name:source.id,errors:messages.filter(m=>m.type==='error').map(m=>m.message)});
+                }
+                return info;
+              });
+              console.log('Browser result',JSON.stringify(result));
+              console.log('Browser console errors',JSON.stringify(errors));
+              const wgslErrors=result.shaders.flatMap(s=>s.errors.map(e=>s.name+': '+e));
+              if(wgslErrors.length)throw Error('WGSL compile errors: '+wgslErrors.join(' | '));
+              if(result.adapter&&!result.fallback&&errors.length)throw Error(errors.join('\n'));
+              if(result.canvasSize[0]===0)throw Error('Canvas was not sized');
+            }finally{await browser.close();}
+          })().catch(e=>{console.error(e);process.exitCode=1;});
+          JS
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
