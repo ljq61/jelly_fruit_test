@@ -252,6 +252,18 @@ struct U {
  const fallback=document.getElementById("fallback");
  const status=document.getElementById("status");
  if(!navigator.gpu){fallback.classList.add("on");return;}
+ let firstFrame=false;
+ const report=(label,error)=>{
+   const detail=error?.message||String(error||'Unknown GPU error');
+   console.error('[Citrus]',label,detail,error);
+   status.textContent=label.toUpperCase()+': '+detail.slice(0,110);
+   // Keep the exact failure readable rather than leaving a black surface.
+   if(!firstFrame){
+     fallback.classList.add('on');
+     fallback.querySelector('h2').textContent='WEBGPU COULD NOT START.';
+     fallback.querySelector('p').textContent=label+': '+detail+' — Please try the latest Chrome or Edge.';
+   }
+ };
  let device,context,format;
  try{
    const adapter=await navigator.gpu.requestAdapter({powerPreference:"high-performance"});
@@ -262,7 +274,8 @@ struct U {
    format=navigator.gpu.getPreferredCanvasFormat();
    context.configure({device,format,alphaMode:"opaque"});
  }catch(err){console.error(err);fallback.classList.add("on");return;}
- device.lost.then(info=>{console.error("Device lost:",info);fallback.classList.add("on");});
+ device.addEventListener('uncapturederror',ev=>report('GPU validation',ev.error));
+ device.lost.then(info=>report('GPU device lost ('+info.reason+')',info.message||info));
  const gpu=GPUBufferUsage, tex=GPUTextureUsage;
  const R=1.42,BASE=-.94,DEPTH=.24,FLOOR=-.94;
  const fruits=[
@@ -632,6 +645,7 @@ struct U {
  const shader=id=>device.createShaderModule({code:$(id).textContent,label:id});
  const entry=(mod,name)=>({module:mod,entryPoint:name});
  const studio=shader("studioWGSL"),gel=shader("gelWGSL"),back=shader("backWGSL"),post=shader("postWGSL"),wire=shader("wireWGSL");
+ device.pushErrorScope('validation');
  const meshLayout={arrayStride:36,attributes:[{shaderLocation:0,offset:0,format:"float32x3"},{shaderLocation:1,offset:12,format:"float32x3"},{shaderLocation:2,offset:24,format:"float32x3"}]};
  const studioPipe=device.createRenderPipeline({layout:"auto",vertex:entry(studio,"vs"),fragment:{...entry(studio,"fs"),targets:[{format:"rgba16float"}]},primitive:{topology:"triangle-list"}});
  const backPipe=device.createRenderPipeline({layout:"auto",vertex:{...entry(back,"vs"),buffers:[meshLayout]},fragment:{...entry(back,"fs"),targets:[{format:"rgba16float"}]},primitive:{topology:"triangle-list",cullMode:"front",frontFace:"ccw"},depthStencil:{format:"depth24plus",depthWriteEnabled:true,depthCompare:"greater"}});
@@ -643,6 +657,8 @@ struct U {
  const studioGroup=device.createBindGroup({layout:studioPipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:uniformBuffer}}]});
  const backGroup=device.createBindGroup({layout:backPipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:uniformBuffer}}]});
  const wireGroup=device.createBindGroup({layout:wirePipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:uniformBuffer}}]});
+ const pipelineError=await device.popErrorScope();
+ if(pipelineError){report('Pipeline validation',pipelineError);return;}
  let gelGroup,postGroup;
  function resize(){
    const dpr=Math.min(window.devicePixelRatio||1,1.75);
@@ -702,6 +718,7 @@ struct U {
    pass=encoder.beginRenderPass({colorAttachments:[{view:context.getCurrentTexture().createView(),loadOp:"clear",storeOp:"store",clearValue:{r:0,g:0,b:0,a:1}}]});
    pass.setPipeline(postPipe);pass.setBindGroup(0,postGroup);pass.draw(3);pass.end();
    device.queue.submit([encoder.finish()]);
+   firstFrame=true;
  }
  function ray(ev){
    const rect=canvas.getBoundingClientRect();
@@ -801,11 +818,17 @@ struct U {
        acc-=1/60;ticks++;
      }
      render();
-   }catch(err){console.error("Citrus render error",err);status.textContent="RENDER ERROR — SEE CONSOLE";fallback.classList.add("on");return;}
+   }catch(err){report("Render failure",err);return;}
    requestAnimationFrame(frame);
  }
  requestAnimationFrame(frame);
-})();
+})().catch(err=>{
+ console.error('[Citrus] Unhandled startup failure',err);
+ const fb=document.getElementById('fallback');
+ fb.querySelector('h2').textContent='WEBGPU STARTUP FAILED.';
+ fb.querySelector('p').textContent=(err?.message||String(err))+' — Please try Chrome or Edge with WebGPU enabled.';
+ fb.classList.add('on');
+});
 </script>
 </body>
 </html>
