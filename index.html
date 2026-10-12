@@ -85,7 +85,7 @@ input[type=range]{width:100%;display:block;accent-color:#575a4f;cursor:pointer;h
 <div><div class="range-label"><label for="damp">INNER DAMPING</label><output id="dampValue">32</output></div><input id="damp" type="range" min="0" max="100" value="32"></div>
 </div>
 <div class="actions"><button class="primary" id="nudge">GIVE IT A NUDGE ↗</button><button id="reset">RESET</button><button id="pause">PAUSE</button></div>
-<div class="footline"><label><input type="checkbox" id="mesh"> SHOW MESH</label><span class="status" id="status">DRAG TO INTERACT · SPACE / N / R</span></div>
+<div class="footline"><label><input type="checkbox" id="mesh"> SHOW MESH</label><span class="status" id="status">DRAG · SPACE / N / R · F: COMPAT</span></div>
 </section>
 </footer>
 </main>
@@ -252,7 +252,7 @@ struct U {
  const fallback=document.getElementById("fallback");
  const status=document.getElementById("status");
  if(!navigator.gpu){fallback.classList.add("on");return;}
- let firstFrame=false,softwareFallback=false;
+ let firstFrame=false,softwareFallback=new URLSearchParams(location.search).get('compat')==='1';
  window.__citrusRuntime={state:'initializing',frames:0,device:null,lastError:null};
  const report=(label,error)=>{
    const detail=error?.message||String(error||'Unknown GPU error');
@@ -261,7 +261,7 @@ struct U {
    console.error('[Citrus]',label,detail,error);
    status.textContent=label.toUpperCase()+': '+detail.slice(0,110);
    // Recover from post-start device loss without leaving the user with a black canvas.
-   if(firstFrame){
+   if(firstFrame||softwareFallback){
      softwareFallback=true;
      window.__citrusRuntime.state='fallback2d';
      status.textContent='COMPATIBILITY RENDERING / GPU RECOVERY';
@@ -814,10 +814,14 @@ struct U {
    if(key===" "){ev.preventDefault();$("pause").click();}
    else if(key==="n")nudge();
    else if(key==="r")reset();
+   else if(key==="f"){
+     softwareFallback=true;
+     status.textContent='COMPATIBILITY RENDERING / CANVAS 2D';
+   }
  });
 
  // Soft-body CPU rescue renderer shares the existing XPBD simulation and picking.
- // Used only after a previously working GPU device is lost.
+ // Used after GPU device loss or when the user requests compatibility mode.
  const rescue=document.createElement('canvas');
  rescue.setAttribute('aria-hidden','true');
  rescue.style.cssText='display:none;position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none';
