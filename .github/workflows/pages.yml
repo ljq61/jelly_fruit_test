@@ -18,11 +18,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check single-file application
+      - name: Validate self-contained HTML and JavaScript
         run: |
           test -s index.html
           grep -q 'navigator.gpu' index.html
-          grep -q 'Bowyer' index.html
+          grep -q 'function delaunay' index.html
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("index.html").read_text()
+          scripts = re.findall(r"<script(?:\s[^>]*)?>(.*?)</script>", html, flags=re.S)
+          assert len(scripts) == 6, f"Expected five WGSL source tags and one JavaScript tag, got {len(scripts)}"
+          assert 'src=' not in html and '<link ' not in html, "Demo should not import dependencies"
+          Path("/tmp/citrus-jelly-app.js").write_text(scripts[-1])
+          print("Self-contained HTML: passed")
+          PY
+          node --check /tmp/citrus-jelly-app.js
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
