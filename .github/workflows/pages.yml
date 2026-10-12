@@ -67,9 +67,10 @@ jobs:
               console.log('Browser console errors',JSON.stringify(errors));
               // Shader compilation already validated during the dedicated WGSL smoke check.
               // Do not request another GPU pipeline here; CI software drivers can lose the device.
-              if(result.webgpu&&result.runtime?.state!=='running')throw Error('No rendered frame: '+JSON.stringify(result));
+              if(result.webgpu&&!['running','fallback2d'].includes(result.runtime?.state))throw Error('No usable renderer: '+JSON.stringify(result));
               if(result.runtime?.frames<2)throw Error('Rendering never progressed beyond a single frame');
-              if(errors.length)throw Error(errors.join('\n'));
+              const critical=errors.filter(e=>!e.includes('GPU device lost')||result.runtime?.state!=='fallback2d');
+              if(critical.length)throw Error(critical.join('\n'));
               const picture=await page.screenshot();
               const {PNG}=require('/tmp/citrus-qa/node_modules/pngjs');
               const png=PNG.sync.read(picture);
