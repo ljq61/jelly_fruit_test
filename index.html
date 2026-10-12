@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f4ee">
+<title>Citrus / Jelly — Material Study No. 010</title>
+<style>
+:root{color-scheme:light;--ink:#242620;--muted:#77796f;--line:rgba(38,42,34,.17);--paper:#f6f4ee;--accent:#c16e32}
+*{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%;overflow-x:hidden;background:var(--paper)}
+body{font-family:Arial,Helvetica,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+canvas:active{cursor:grabbing}
+.interface{position:relative;z-index:2;min-height:100dvh;pointer-events:none;display:flex;flex-direction:column;padding:clamp(20px,3.5vw,54px)}
+.interface button,.interface input,.interface label{pointer-events:auto}
+.mast{display:flex;justify-content:space-between;gap:20px;font-size:10px;letter-spacing:.24em;font-weight:700;text-transform:uppercase}
+.mast .side{text-align:right;color:var(--muted);line-height:1.65}
+.hero{margin-top:clamp(55px,9vh,124px);max-width:520px}
+.kicker{font-size:10px;letter-spacing:.24em;font-weight:700;text-transform:uppercase;color:var(--accent);margin:0 0 17px}
+h1{margin:0;font-size:clamp(56px,7.5vw,132px);line-height:.88;letter-spacing:-.095em;font-weight:600}
+h1 span{display:block;font-weight:300;letter-spacing:-.09em}
+.subtitle{font-size:12px;letter-spacing:.24em;font-weight:600;margin-top:30px;color:#62655a}
+.space{flex:1;min-height:220px}
+.bottom{display:grid;grid-template-columns:minmax(200px,1fr) minmax(290px,410px);align-items:end;gap:36px}
+.leftnote{align-self:end;font-size:10px;line-height:1.8;color:#8d8d83;letter-spacing:.12em;text-transform:uppercase}
+.controls{pointer-events:auto;background:rgba(251,250,245,.79);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.8);border-radius:4px;padding:22px 24px 18px;box-shadow:0 14px 45px rgba(53,43,24,.07)}
+.control-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.control-heading span{font-size:10px;font-weight:700;letter-spacing:.19em}
+.control-heading small{font-size:9px;color:var(--muted);letter-spacing:.14em}
+.samples{display:flex;gap:8px;margin-bottom:22px}
+.swatch{border:1px solid var(--line);border-radius:2px;background:transparent;color:var(--ink);padding:9px 10px;font-size:9px;font-weight:700;letter-spacing:.05em;flex:1;cursor:pointer;transition:background .2s,border-color .2s}
+.swatch[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:white}
+.swatch:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #bd843c;outline-offset:3px}
+.rangepair{display:grid;grid-template-columns:1fr 1fr;gap:23px;margin-bottom:21px}
+.range-label{display:flex;justify-content:space-between;gap:8px;font-size:9px;color:#54574e;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
+.range-label output{color:#97978b;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;display:block;accent-color:#575a4f;cursor:pointer;height:14px;margin:0}
+.actions{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:7px}
+.actions button{border:1px solid var(--line);background:transparent;padding:12px 7px;font-size:9px;letter-spacing:.08em;font-weight:700;color:var(--ink);cursor:pointer;border-radius:2px}
+.actions button.primary{background:#383a32;color:white;border-color:#383a32}
+.actions button:hover{filter:brightness(.93)}
+.footline{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:17px;font-size:9px;letter-spacing:.1em;color:#92948a}
+.footline label{display:flex;gap:7px;align-items:center;cursor:pointer}
+.footline input{accent-color:#383a32}
+.status{font-size:9px;letter-spacing:.04em}
+.fallback{position:fixed;inset:0;z-index:6;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;background:#f6f4ee}
+.fallback.on{display:flex}
+.fallback h2{font-size:clamp(30px,5vw,60px);letter-spacing:-.07em;margin:10px 0}
+.fallback p{line-height:1.8;max-width:420px;color:#75766c;font-size:13px}
+@media(max-width:780px){
+.interface{padding:22px 20px 20px}
+.mast{font-size:9px}.mast .side{font-size:8px}
+.hero{margin-top:38px}h1{font-size:clamp(52px,13vw,82px)}
+.subtitle{margin-top:17px;font-size:9px}
+.space{min-height:clamp(250px,35vh,460px)}
+.bottom{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.leftnote{display:none}
+.controls{padding:15px 16px 12px}
+.control-heading{margin-bottom:12px}
+.samples{margin-bottom:14px}
+.rangepair{gap:14px;margin-bottom:12px}
+.footline{margin-top:11px}
+}
+@media(max-height:690px) and (max-width:780px){.hero{margin-top:18px}h1{font-size:50px}.space{min-height:185px}.controls{padding:12px 14px}.subtitle{margin-top:10px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="stage" aria-label="Interactive WebGPU soft-body citrus jelly. Drag the slice to stretch it."></canvas>
+<main class="interface">
+<header class="mast"><div>MATERIAL STUDY<br>NO. 010</div><div class="side">A PLAYFUL STUDY IN SOFT MATTER<br>REAL-TIME / WEBGPU</div></header>
+<section class="hero"><p class="kicker">TACTILE EXPERIMENT / 010</p><h1>CITRUS<span>/ JELLY.</span></h1><p class="subtitle">GRAB. STRETCH. RELEASE.</p></section>
+<div class="space"></div>
+<footer class="bottom">
+<div class="leftnote">LIGHT, PULP & ELASTICITY<br>ONE SLICE. ENDLESS WOBBLE.<br>© MATERIAL PLAYGROUND</div>
+<section class="controls" aria-label="Material controls">
+<div class="control-heading"><span>THE SAMPLE</span><small>01 / INTERACTIVE</small></div>
+<div class="samples" role="group" aria-label="Citrus variety">
+<button class="swatch" data-fruit="0" aria-pressed="true">ORANGE</button>
+<button class="swatch" data-fruit="1" aria-pressed="false">BLOOD ORANGE</button>
+<button class="swatch" data-fruit="2" aria-pressed="false">LEMON</button>
+</div>
+<div class="rangepair">
+<div><div class="range-label"><label for="firm">FIRMNESS</label><output id="firmValue">65</output></div><input id="firm" type="range" min="0" max="100" value="65"></div>
+<div><div class="range-label"><label for="damp">INNER DAMPING</label><output id="dampValue">32</output></div><input id="damp" type="range" min="0" max="100" value="32"></div>
+</div>
+<div class="actions"><button class="primary" id="nudge">GIVE IT A NUDGE ↗</button><button id="reset">RESET</button><button id="pause">PAUSE</button></div>
+<div class="footline"><label><input type="checkbox" id="mesh"> SHOW MESH</label><span class="status" id="status">DRAG TO INTERACT · SPACE / N / R</span></div>
+</section>
+</footer>
+</main>
+<div class="fallback" id="fallback" role="alert"><div><div class="kicker">MATERIAL STUDY / 010</div><h2>THIS SLICE NEEDS WEBGPU.</h2><p>Open this experience in a recent version of Chrome, Edge, or another browser with WebGPU enabled, on a device with supported graphics hardware.</p></div></div>
+<script id="studioWGSL" type="text/plain">
+struct U {
+ vp:mat4x4<f32>, cam:vec4f, res:vec4f,
+ flesh:vec4f, pith:vec4f, peel:vec4f, shadow:vec4f, options:vec4f
+}
+@group(0) @binding(0) var<uniform> u:U;
+@vertex fn vs(@builtin(vertex_index) id:u32)->@builtin(position) vec4f {
+ let xy=array<vec2f,3>(vec2f(-1.,-1.),vec2f(3.,-1.),vec2f(-1.,3.));
+ return vec4f(xy[id],0.,1.);
+}
+fn hash(p:vec2f)->f32{return fract(sin(dot(p,vec2f(127.1,311.7)))*43758.5453);}
+@fragment fn fs(@builtin(position) pos:vec4f)->@location(0) vec4f {
+ let uv=pos.xy/u.res.xy;
+ let p=vec2f(uv.x,1.-uv.y);
+ let horizon=smoothstep(.33,.85,p.y+0.10*pow(abs(p.x-.48),2.));
+ var color=mix(vec3f(.79,.79,.76),vec3f(.95,.94,.91),horizon);
+ let softbox=exp(-pow((uv.x-.38)*1.4,2.)-pow((uv.y-.16)*1.1,2.));
+ color+=vec3f(.064,.061,.056)*softbox;
+ let stripe=exp(-pow((uv.x-.81)*5.,2.))*exp(-pow((uv.y-.34)*1.5,2.));
+ color+=vec3f(.04,.038,.034)*stripe;
+ let q=(pos.xy-u.shadow.xy)/max(u.shadow.zw,vec2f(1.));
+ let r=length(q);
+ let broad=exp(-1.65*r*r);
+ let contact=exp(-5.5*(q.x*q.x+q.y*q.y));
+ let tint=mix(vec3f(.38,.33,.25),u.flesh.rgb,.36);
+ color=mix(color,color*tint,broad*.13+contact*.13);
+ let grain=(hash(floor(pos.xy))-.5)*.0025;
+ return vec4f(color+grain,1.);
+}
+</script>
+<script id="gelWGSL" type="text/plain">
+struct U {
+ vp:mat4x4<f32>, cam:vec4f, res:vec4f,
+ flesh:vec4f, pith:vec4f, peel:vec4f, shadow:vec4f, options:vec4f
+}
+@group(0) @binding(0) var<uniform> u:U;
+@group(0) @binding(1) var samp:sampler;
+@group(0) @binding(2) var scene:texture_2d<f32>;
+@group(0) @binding(3) var backDepth:texture_2d<f32>;
+struct Out {
+ @builtin(position) pos:vec4f,
+ @location(0) normal:vec3f,
+ @location(1) rest:vec3f,
+ @location(2) world:vec3f
+}
+@vertex fn vs(@location(0) p:vec3f,@location(1) n:vec3f,@location(2) rest:vec3f)->Out {
+ var out:Out;out.pos=u.vp*vec4f(p,1.);out.normal=n;out.rest=rest;out.world=p;return out;
+}
+fn hash(p:vec2f)->f32{return fract(sin(dot(p,vec2f(127.1,311.7)))*43758.5453);}
+fn bubble(p:vec2f)->vec2f {
+ let cell=floor(p);
+ let h=vec2f(hash(cell),hash(cell+4.17));
+ let d=length(fract(p)-(.23+.54*h));
+ return vec2f(d,h.x);
+}
+@fragment fn fs(input:Out)->@location(0) vec4f {
+ let uv=input.pos.xy/u.res.xy;
+ let view=normalize(u.cam.xyz-input.world);
+ var N=normalize(input.normal);
+ if(dot(N,view)<0.){N=-N;}
+ let ndv=max(dot(N,view),0.);
+ let back=textureLoad(backDepth,vec2i(input.pos.xy),0).r;
+ let thick=clamp((back-input.pos.z)*13.,.02,1.65);
+ let radial=length(vec2f(input.rest.x,input.rest.y+.94))/1.42;
+ let isCut=select(0.,1.,input.rest.y<-.925 && abs(N.y)>.25);
+ let pithWeight=smoothstep(.76,.80,radial)*(1.-smoothstep(.89,.94,radial));
+ let peelWeight=smoothstep(.928,.97,radial)*(1.-isCut);
+ let flesh=u.flesh.rgb;let pith=u.pith.rgb;let peel=u.peel.rgb;
+ var base=mix(flesh,pith,pithWeight*.94);
+ base=mix(base,peel,peelWeight*.95);
+ let refractOffset=N.xy*(.009+.012*thick)+vec2f(.003,-.002)*thick;
+ let backdrop=textureSample(scene,samp,clamp(uv+refractOffset,vec2f(.002),vec2f(.998))).rgb;
+ let absorption=vec3f(.12,.27,.48)+(vec3f(1.)-base)*vec3f(1.4,2.0,2.45);
+ let trans=exp(-absorption*(.30+thick*.87));
+ var col=backdrop*trans+base*(vec3f(1.)-trans)*1.13;
+ col=mix(col,base*.96,pithWeight*.79+peelWeight*.68);
+ let angle=atan2(max(input.rest.y+.94,0.),input.rest.x);
+ let membrane=(1.-smoothstep(.015,.105,abs(sin(angle*7.))))*
+ smoothstep(.12,.27,radial)*(1.-smoothstep(.76,.88,radial))*(1.-isCut);
+ col=mix(col,vec3f(1.,.968,.84),membrane*.82);
+ let bp=input.rest.xy*18.5;
+ let b=bubble(bp);
+ let radius=.065+.055*b.y;
+ let rim=1.-smoothstep(.012,.034,abs(b.x-radius));
+ let inside=1.-smoothstep(radius*.58,radius*.90,b.x);
+ let speckle=(rim*.56+inside*.12)*(1.-pithWeight)*(1.-peelWeight);
+ col=mix(col,vec3f(1.,.96,.80),speckle*.68);
+ let crystal=step(.9966,hash(floor(input.rest.xy*88.)))*pow(max(0.,sin(input.rest.x*37.+u.options.y*1.7)),4.);
+ col+=vec3f(.8,.67,.42)*crystal*.28;
+ let seeds=array<vec2f,5>(vec2f(-.59,-.49),vec2f(.31,-.34),vec2f(.68,-.64),vec2f(-.14,-.23),vec2f(-.79,-.71));
+ for(var k=0;k<5;k++){
+   let s=input.rest.xy-seeds[k];
+   let a=f32(k)*.89+.3;
+   let rotated=vec2f(cos(a)*s.x-sin(a)*s.y,sin(a)*s.x+cos(a)*s.y);
+   let d=length(rotated/vec2f(.047,.091));
+   let mask=1.-smoothstep(.79,1.04,d);
+   col=mix(col,vec3f(.96,.82,.47)+vec3f(.08)*max(0.,1.-d),mask*.78*(1.-pithWeight));
+ }
+ let fresnel=pow(1.-ndv,4.);
+ let softbox=pow(max(0.,dot(N,normalize(vec3f(-.35,.78,1.3)))),28.);
+ let strip=pow(max(0.,dot(N,normalize(vec3f(-.83,.38,.82)))),60.);
+ let fill=pow(max(0.,dot(N,normalize(vec3f(.9,.13,.9)))),19.);
+ let rimlight=vec3f(.98,.87,.72)*fresnel*.24;
+ col+=rimlight+vec3f(1.,.97,.88)*(softbox*.45+strip*.34+fill*.11);
+ col+=base*(.10+.12*max(dot(N,normalize(vec3f(-.5,.9,.7))),0.));
+ return vec4f(col,1.);
+}
+</script>
+<script id="backWGSL" type="text/plain">
+struct U {
+ vp:mat4x4<f32>, cam:vec4f, res:vec4f,
+ flesh:vec4f, pith:vec4f, peel:vec4f, shadow:vec4f, options:vec4f
+}
+@group(0) @binding(0) var<uniform> u:U;
+@vertex fn vs(@location(0) p:vec3f,@location(1) n:vec3f,@location(2) rest:vec3f)->@builtin(position) vec4f{return u.vp*vec4f(p,1.);}
+@fragment fn fs(@builtin(position) pos:vec4f)->@location(0) vec4f{return vec4f(pos.z,0.,0.,1.);}
+</script>
+<script id="postWGSL" type="text/plain">
+@group(0) @binding(0) var t:texture_2d<f32>;
+@group(0) @binding(1) var s:sampler;
+@vertex fn vs(@builtin(vertex_index) id:u32)->@builtin(position) vec4f{
+ let xy=array<vec2f,3>(vec2f(-1.,-1.),vec2f(3.,-1.),vec2f(-1.,3.));return vec4f(xy[id],0.,1.);
+}
+fn neutral(rgb:vec3f)->vec3f {
+ let start=.8;let desat=.15;
+ let m=min(rgb.r,min(rgb.g,rgb.b));
+ let offset=select(.04,m-6.25*m*m,m<.08);
+ var c=max(rgb-vec3f(offset),vec3f(0.));
+ let peak=max(c.r,max(c.g,c.b));
+ if(peak<start){return c;}
+ let d=1.-start;let newPeak=1.-d*d/(peak+d-start);
+ c*=newPeak/max(peak,.0001);
+ return mix(c,vec3f(newPeak),1.-1./(desat*(peak-newPeak)+1.));
+}
+fn srgb(v:vec3f)->vec3f {
+ return select(12.92*v,1.055*pow(max(v,vec3f(0.)),vec3f(1./2.4))-.055,v>vec3f(.0031308));
+}
+@fragment fn fs(@builtin(position) p:vec4f)->@location(0) vec4f{
+ let dims=vec2f(textureDimensions(t));
+ let uv=p.xy/dims;
+ var c=textureSample(t,s,uv).rgb*1.11;
+ c=srgb(neutral(c));
+ let noise=fract(sin(dot(floor(p.xy),vec2f(12.9898,78.233)))*43758.5453)-.5;
+ return vec4f(clamp(c+noise/255.,vec3f(0.),vec3f(1.)),1.);
+}
+</script>
+<script id="wireWGSL" type="text/plain">
+struct U {
+ vp:mat4x4<f32>, cam:vec4f, res:vec4f,
+ flesh:vec4f, pith:vec4f, peel:vec4f, shadow:vec4f, options:vec4f
+}
+@group(0) @binding(0) var<uniform> u:U;
+@vertex fn vs(@location(0) p:vec3f)->@builtin(position) vec4f{return u.vp*vec4f(p,1.);}
+@fragment fn fs()->@location(0) vec4f{return vec4f(.12,.17,.14,.48);}
+</script>
+<script>
+"use strict";
+(async function(){
+ const canvas=document.getElementById("stage");
+ const fallback=document.getElementById("fallback");
+ const status=document.getElementById("status");
+ if(!navigator.gpu){fallback.classList.add("on");return;}
+ let device,context,format;
+ try{
+   const adapter=await navigator.gpu.requestAdapter({powerPreference:"high-performance"});
+   if(!adapter)throw Error("No WebGPU adapter");
+   device=await adapter.requestDevice();
+   context=canvas.getContext("webgpu");
+   if(!context)throw Error("WebGPU canvas unavailable");
+   format=navigator.gpu.getPreferredCanvasFormat();
+   context.configure({device,format,alphaMode:"opaque"});
+ }catch(err){console.error(err);fallback.classList.add("on");return;}
+ device.lost.then(info=>{console.error("Device lost:",info);fallback.classList.add("on");});
+ const gpu=GPUBufferUsage, tex=GPUTextureUsage;
+ const R=1.42,BASE=-.94,DEPTH=.24,FLOOR=-.94;
+ const fruits=[
+   {f:[1.00,.47,.065,1],p:[1.,.905,.62,1],r:[.98,.48,.055,1]},
+   {f:[.88,.13,.19,1],p:[1.,.83,.67,1],r:[.65,.16,.20,1]},
+   {f:[.95,.88,.23,1],p:[1.,.97,.78,1],r:[.91,.78,.12,1]}
+ ];
+ let fruit=0,firmness=.65,innerDamp=.32,paused=false,debug=false,grab=null,elapsed=0;
+ const $=id=>document.getElementById(id);
+ const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+ const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+ const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+ const norm=a=>{const l=Math.hypot(...a)||1;return a.map(v=>v/l);};
+ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+ function delaunay(points){
+   const pp=points.map(p=>[p[0],p[1]]);
+   const n=pp.length;
+   pp.push([-9,-8],[0,13],[9,-8]);
+   let tris=[[n,n+1,n+2]];
+   function inside(p,a,b,c){
+     const ax=a[0]-p[0],ay=a[1]-p[1],bx=b[0]-p[0],by=b[1]-p[1],cx=c[0]-p[0],cy=c[1]-p[1];
+     const determinant=(ax*ax+ay*ay)*(bx*cy-cx*by)-(bx*bx+by*by)*(ax*cy-cx*ay)+(cx*cx+cy*cy)*(ax*by-bx*ay);
+     const orient=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+     return determinant*(orient>=0?1:-1)>1e-10;
+   }
+   for(let i=0;i<n;i++){
+     let bad=[],edges=new Map();
+     for(let j=0;j<tris.length;j++){
+       const t=tris[j];
+       if(inside(pp[i],pp[t[0]],pp[t[1]],pp[t[2]]))bad.push(j);
+     }
+     for(const j of bad){
+       const t=tris[j];
+       for(let k=0;k<3;k++){
+         const a=t[k],b=t[(k+1)%3],key=Math.min(a,b)+":"+Math.max(a,b);
+         if(edges.has(key))edges.delete(key);else edges.set(key,[a,b]);
+       }
+     }
+     const toRemove=new Set(bad);
+     tris=tris.filter((_,j)=>!toRemove.has(j));
+     for(const [a,b] of edges.values()){
+       let t=[a,b,i];
+       const area=(pp[b][0]-pp[a][0])*(pp[i][1]-pp[a][1])-(pp[b][1]-pp[a][1])*(pp[i][0]-pp[a][0]);
+       if(Math.abs(area)<1e-9)continue;
+       if(area<0)t=[b,a,i];
+       tris.push(t);
+     }
+   }
+   return tris.filter(t=>t.every(i=>i<n)&&Math.abs((pp[t[1]][0]-pp[t[0]][0])*(pp[t[2]][1]-pp[t[0]][1])-(pp[t[1]][1]-pp[t[0]][1])*(pp[t[2]][0]-pp[t[0]][0]))>1e-8);
+ }
+ const points=[];
+ for(let i=0;i<=36;i++){const a=i*Math.PI/36;points.push([R*Math.cos(a),BASE+R*Math.sin(a)]);}
+ for(let i=-15;i<=15;i++)points.push([R*i/16,BASE]);
+ const h=.195;
+ for(let row=1;row<=7;row++){
+   const y=row*h;
+   for(let j=-8;j<=8;j++){
+     const x=(j+(row%2)*.5)*h;
+     if(x*x+y*y<(R-.082)*(R-.082))points.push([x,BASE+y]);
+   }
+ }
+ const triangles=delaunay(points);
+ const n2=points.length;
+ const rest=[],tets=[],edges=[],edgeSet=new Set();
+ function addEdge(a,b){if(a===b)return;let k=Math.min(a,b)+":"+Math.max(a,b);if(!edgeSet.has(k)){edgeSet.add(k);edges.push([a,b]);}}
+ for(let layer=0;layer<3;layer++)for(const p of points)rest.push(p[0],p[1],(layer-1)*DEPTH);
+ function tetVolume(ids,arr){
+   const a=ids[0]*3,b=ids[1]*3,c=ids[2]*3,d=ids[3]*3;
+   const x=[arr[a]-arr[d],arr[a+1]-arr[d+1],arr[a+2]-arr[d+2]];
+   const y=[arr[b]-arr[d],arr[b+1]-arr[d+1],arr[b+2]-arr[d+2]];
+   const z=[arr[c]-arr[d],arr[c+1]-arr[d+1],arr[c+2]-arr[d+2]];
+   return dot(x,cross(y,z))/6;
+ }
+ for(const tri of triangles){
+   const [a,b,c]=tri.slice().sort((x,y)=>x-y);
+   for(let l=0;l<2;l++){
+     let low=l*n2,high=(l+1)*n2;
+     for(const raw of [[a+low,b+low,c+low,c+high],[a+low,b+low,b+high,c+high],[a+low,a+high,b+high,c+high]]){
+       const ids=raw.slice();
+       if(tetVolume(ids,rest)<0)[ids[0],ids[1]]=[ids[1],ids[0]];
+       tets.push(ids);
+       for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)addEdge(ids[i],ids[j]);
+     }
+   }
+ }
+ const vertexCount=rest.length/3;
+ const positions=new Float32Array(rest),velocities=new Float32Array(rest.length);
+ const prev=new Float32Array(rest.length);
+ const tetData=tets.map(ids=>{
+   const c=[0,0,0],loc=[],bbmin=[Infinity,Infinity,Infinity],bbmax=[-Infinity,-Infinity,-Infinity];
+   for(const i of ids)for(let j=0;j<3;j++){const v=rest[3*i+j];c[j]+=v*.25;bbmin[j]=Math.min(bbmin[j],v);bbmax[j]=Math.max(bbmax[j],v);}
+   for(const i of ids)for(let j=0;j<3;j++)loc.push(rest[3*i+j]-c[j]);
+   return {ids,loc,volume:Math.abs(tetVolume(ids,rest)),q:[0,0,0,1],min:bbmin,max:bbmax,center:c};
+ });
+ const lengths=edges.map(([a,b])=>Math.hypot(rest[a*3]-rest[b*3],rest[a*3+1]-rest[b*3+1],rest[a*3+2]-rest[b*3+2]));
+ // Build a smooth skinned front/back, curved rind and fruit-only cut face.
+ const surfRest=[],surfaceIndices=[];
+ function vert(x,y,z){surfRest.push(x,y,z);return surfRest.length/3-1;}
+ function tri(a,b,c){surfaceIndices.push(a,b,c);}
+ const ANG=64,RINGS=16,outer=R-.050,sideEnds=[];
+ for(const side of [1,-1]){
+   let center=vert(0,BASE,side*.215),last=null;
+   for(let ring=1;ring<=RINGS;ring++){
+     const radius=outer*ring/RINGS;
+     const row=[];
+     for(let j=0;j<=ANG;j++){
+       let a=j*Math.PI/ANG;
+       let z=side*(.20+.015*(1-radius/outer));
+       row.push(vert(radius*Math.cos(a),BASE+radius*Math.sin(a),z));
+     }
+     if(last){
+       for(let j=0;j<ANG;j++){
+         if(side>0){tri(last[j],row[j],row[j+1]);tri(last[j],row[j+1],last[j+1]);}
+         else{tri(last[j],row[j+1],row[j]);tri(last[j],last[j+1],row[j+1]);}
+       }
+     }else for(let j=0;j<ANG;j++){
+       if(side>0)tri(center,row[j],row[j+1]);else tri(center,row[j+1],row[j]);
+     }
+     last=row;
+   }
+   sideEnds.push(last);
+ }
+ const arc=[];
+ for(let k=0;k<=12;k++){
+   const a=k*Math.PI/12,row=[];
+   const rad=R-.05+.05*Math.sin(a);
+   const z=.20*Math.cos(a);
+   for(let j=0;j<=ANG;j++){let t=j*Math.PI/ANG;row.push(vert(rad*Math.cos(t),BASE+rad*Math.sin(t),z));}
+   arc.push(row);
+ }
+ for(let k=0;k<12;k++)for(let j=0;j<ANG;j++){
+   tri(arc[k][j],arc[k+1][j+1],arc[k+1][j]);
+   tri(arc[k][j],arc[k][j+1],arc[k+1][j+1]);
+ }
+ const cut=[];
+ for(let k=0;k<=12;k++){
+   const a=k*Math.PI/12,row=[];
+   for(let j=0;j<=32;j++){
+     const x=-outer+2*outer*j/32;
+     row.push(vert(x,BASE,.20*Math.cos(a)));
+   }
+   cut.push(row);
+ }
+ for(let k=0;k<12;k++)for(let j=0;j<32;j++){
+   tri(cut[k][j],cut[k+1][j],cut[k+1][j+1]);
+   tri(cut[k][j],cut[k+1][j+1],cut[k][j+1]);
+ }
+ // Tetrahedral barycentric skinning, with projection fallback only at beveled seams.
+ const embeddings=[];
+ function weightsFor(p,t){
+   const ids=t.ids,d=ids[3]*3;
+   const ax=rest[ids[0]*3]-rest[d],ay=rest[ids[0]*3+1]-rest[d+1],az=rest[ids[0]*3+2]-rest[d+2];
+   const bx=rest[ids[1]*3]-rest[d],by=rest[ids[1]*3+1]-rest[d+1],bz=rest[ids[1]*3+2]-rest[d+2];
+   const cx=rest[ids[2]*3]-rest[d],cy=rest[ids[2]*3+1]-rest[d+1],cz=rest[ids[2]*3+2]-rest[d+2];
+   const qx=p[0]-rest[d],qy=p[1]-rest[d+1],qz=p[2]-rest[d+2];
+   const den=ax*(by*cz-bz*cy)+ay*(bz*cx-bx*cz)+az*(bx*cy-by*cx);
+   if(Math.abs(den)<1e-13)return null;
+   const w0=(qx*(by*cz-bz*cy)+qy*(bz*cx-bx*cz)+qz*(bx*cy-by*cx))/den;
+   const w1=(ax*(qy*cz-qz*cy)+ay*(qz*cx-qx*cz)+az*(qx*cy-qy*cx))/den;
+   const w2=(ax*(by*qz-bz*qy)+ay*(bz*qx-bx*qz)+az*(bx*qy-by*qx))/den;
+   return [w0,w1,w2,1-w0-w1-w2];
+ }
+ for(let j=0;j<surfRest.length;j+=3){
+   const p=surfRest.slice(j,j+3);
+   let best=null,penalty=Infinity;
+   for(let k=0;k<tetData.length;k++){
+     const t=tetData[k];
+     if(p[0]<t.min[0]-.065||p[0]>t.max[0]+.065||p[1]<t.min[1]-.065||p[1]>t.max[1]+.065||p[2]<t.min[2]-.04||p[2]>t.max[2]+.04)continue;
+     const w=weightsFor(p,t);
+     if(!w)continue;
+     const score=w.reduce((s,v)=>s+Math.max(0,-v)**2+Math.max(0,v-1)**2,0);
+     if(score<penalty){penalty=score;best={ids:t.ids,w};if(score<1e-9)break;}
+   }
+   if(!best){
+     let closest=Infinity;
+     for(const t of tetData){
+       const d=(p[0]-t.center[0])**2+(p[1]-t.center[1])**2+(p[2]-t.center[2])**2;
+       if(d<closest){closest=d;best={ids:t.ids,w:weightsFor(p,t)||[.25,.25,.25,.25]};}
+     }
+   }
+   const w=best.w.map(v=>Math.max(0,v));
+   const sum=w.reduce((a,b)=>a+b,0)||1;
+   embeddings.push({ids:best.ids,w:w.map(v=>v/sum)});
+ }
+ const surfCount=surfRest.length/3;
+ const verts=new Float32Array(surfCount*9);
+ const normals=new Float32Array(surfCount*3);
+ const surfPos=new Float32Array(surfCount*3);
+ const idx=new Uint32Array(surfaceIndices);
+ function updateSkin(){
+   normals.fill(0);
+   for(let i=0;i<surfCount;i++){
+     let p=i*3,e=embeddings[i];
+     for(let a=0;a<3;a++){
+       let v=0;for(let k=0;k<4;k++)v+=positions[e.ids[k]*3+a]*e.w[k];
+       surfPos[p+a]=v;
+     }
+   }
+   for(let k=0;k<idx.length;k+=3){
+     const a=idx[k]*3,b=idx[k+1]*3,c=idx[k+2]*3;
+     let ab=[surfPos[b]-surfPos[a],surfPos[b+1]-surfPos[a+1],surfPos[b+2]-surfPos[a+2]];
+     let ac=[surfPos[c]-surfPos[a],surfPos[c+1]-surfPos[a+1],surfPos[c+2]-surfPos[a+2]];
+     const n=cross(ab,ac);
+     for(const off of [a,b,c])for(let j=0;j<3;j++)normals[off+j]+=n[j];
+   }
+   for(let i=0;i<surfCount;i++){
+     const v=i*9,p=i*3,n=norm(normals.subarray(p,p+3));
+     for(let k=0;k<3;k++){verts[v+k]=surfPos[p+k];verts[v+k+3]=n[k];verts[v+k+6]=surfRest[p+k];}
+   }
+ }
+ function reset(){
+   positions.set(rest);velocities.fill(0);
+   for(const t of tetData)t.q=[0,0,0,1];
+   grab=null;acc=0;
+   updateSkin();
+ }
+ const goal=new Float32Array(rest.length),count=new Float32Array(vertexCount);
+ function rotation(t){
+   const ids=t.ids,loc=t.loc;
+   let c0=0,c1=0,c2=0,A=new Float32Array(9);
+   for(const id of ids){const j=id*3;c0+=positions[j]*.25;c1+=positions[j+1]*.25;c2+=positions[j+2]*.25;}
+   for(let k=0;k<4;k++){
+     const j=ids[k]*3,l=k*3,x=positions[j]-c0,y=positions[j+1]-c1,z=positions[j+2]-c2;
+     A[0]+=x*loc[l];A[1]+=y*loc[l];A[2]+=z*loc[l];
+     A[3]+=x*loc[l+1];A[4]+=y*loc[l+1];A[5]+=z*loc[l+1];
+     A[6]+=x*loc[l+2];A[7]+=y*loc[l+2];A[8]+=z*loc[l+2];
+   }
+   let [x,y,z,w]=t.q;
+   for(let iteration=0;iteration<3;iteration++){
+     const xx=x*x,yy=y*y,zz=z*z,xy=x*y,xz=x*z,yz=y*z,wx=w*x,wy=w*y,wz=w*z;
+     const r0=[1-2*(yy+zz),2*(xy+wz),2*(xz-wy)];
+     const r1=[2*(xy-wz),1-2*(xx+zz),2*(yz+wx)];
+     const r2=[2*(xz+wy),2*(yz-wx),1-2*(xx+yy)];
+     const cc0=cross(r0,A.subarray(0,3)),cc1=cross(r1,A.subarray(3,6)),cc2=cross(r2,A.subarray(6,9));
+     const den=Math.abs(dot(r0,A.subarray(0,3))+dot(r1,A.subarray(3,6))+dot(r2,A.subarray(6,9)))+1e-9;
+     const ox=(cc0[0]+cc1[0]+cc2[0])/den,oy=(cc0[1]+cc1[1]+cc2[1])/den,oz=(cc0[2]+cc1[2]+cc2[2])/den;
+     const half=.5,dx=ox*half,dy=oy*half,dz=oz*half;
+     const nx=x+dx*w+dy*z-dz*y,ny=y-dx*z+dy*w+dz*x,nz=z+dx*y-dy*x+dz*w,nw=w-dx*x-dy*y-dz*z;
+     const inv=1/(Math.hypot(nx,ny,nz,nw)||1);x=nx*inv;y=ny*inv;z=nz*inv;w=nw*inv;
+     if(ox*ox+oy*oy+oz*oz<1e-11)break;
+   }
+   t.q=[x,y,z,w];
+   const xx=x*x,yy=y*y,zz=z*z,xy=x*y,xz=x*z,yz=y*z,wx=w*x,wy=w*y,wz=w*z;
+   const r00=1-2*(yy+zz),r01=2*(xy-wz),r02=2*(xz+wy);
+   const r10=2*(xy+wz),r11=1-2*(xx+zz),r12=2*(yz-wx);
+   const r20=2*(xz-wy),r21=2*(yz+wx),r22=1-2*(xx+yy);
+   for(let k=0;k<4;k++){
+     const j=ids[k]*3,l=k*3;
+     goal[j]+=c0+r00*loc[l]+r01*loc[l+1]+r02*loc[l+2];
+     goal[j+1]+=c1+r10*loc[l]+r11*loc[l+1]+r12*loc[l+2];
+     goal[j+2]+=c2+r20*loc[l]+r21*loc[l+1]+r22*loc[l+2];
+     count[ids[k]]++;
+   }
+ }
+ function step(dt){
+   prev.set(positions);
+   const air=1-.015*dt;
+   for(let j=0;j<positions.length;j+=3){
+     velocities[j]*=air;velocities[j+1]=velocities[j+1]*air-9.2*dt;velocities[j+2]*=air;
+     for(let k=0;k<3;k++)positions[j+k]+=velocities[j+k]*dt;
+   }
+   goal.fill(0);count.fill(0);
+   for(const t of tetData)rotation(t);
+   const shapeK=.13+.43*firmness;
+   for(let i=0;i<vertexCount;i++){
+     const j=i*3,inv=shapeK/Math.max(1,count[i]);
+     for(let k=0;k<3;k++)positions[j+k]+=(goal[j+k]-positions[j+k]*count[i])*inv;
+   }
+   // Small-steps XPBD: one compliance-aware volume projection per substep.
+   const alpha=(2e-11+(1-firmness)*3e-9)/(dt*dt);
+   for(const t of tetData){
+     const ids=t.ids,pp=ids.map(i=>positions.subarray(3*i,3*i+3));
+     const [a,b,c,d]=pp;
+     const ad=sub(a,d),bd=sub(b,d),cd=sub(c,d);
+     const V=dot(ad,cross(bd,cd))/6;
+     const grads=[cross(bd,cd).map(v=>v/6),cross(cd,ad).map(v=>v/6),cross(ad,bd).map(v=>v/6)];
+     grads.push(grads[0].map((v,i)=>-v-grads[1][i]-grads[2][i]));
+     const den=grads.reduce((s,g)=>s+dot(g,g),alpha);
+     const dl=clamp((t.volume-V)/(den+1e-12),-3,3);
+     for(let k=0;k<4;k++){
+       const i=ids[k]*3,g=grads[k];
+       for(let a=0;a<3;a++)positions[i+a]+=clamp(dl*g[a],-.035,.035);
+     }
+   }
+   const compliance=10**(-6.8+(1-firmness)*3.0),edgeAlpha=compliance/(dt*dt);
+   for(let k=0;k<edges.length;k++){
+     const [a,b]=edges[k],i=3*a,j=3*b;
+     const dx=positions[j]-positions[i],dy=positions[j+1]-positions[i+1],dz=positions[j+2]-positions[i+2];
+     const len=Math.hypot(dx,dy,dz)||1e-8,L=lengths[k],ratio=len/L;
+     const hard=ratio>1.8||ratio<.35;
+     const lambda=-(len-L)/(2+(hard?0:edgeAlpha));
+     const correction=clamp(lambda,-.065,.065)/len;
+     for(let axis=0;axis<3;axis++){
+       const dist=(axis===0?dx:axis===1?dy:dz)*correction;
+       positions[i+axis]-=dist;positions[j+axis]+=dist;
+     }
+   }
+   if(grab){
+     for(const a of grab.attached){
+       const i=a.i*3,w=a.w;
+       for(let k=0;k<3;k++){
+         const target=grab.target[k]+a.offset[k];
+         positions[i+k]+=(target-positions[i+k])*w*(.38+.28*firmness);
+       }
+       positions[i+1]=Math.max(positions[i+1],FLOOR+.04+.16*w);
+     }
+   }
+   const staticMu=.62,dynamicMu=.38;
+   for(let i=0;i<vertexCount;i++){
+     const j=i*3;
+     if(positions[j+1]<FLOOR){
+       positions[j+1]=FLOOR;
+       const dx=positions[j]-prev[j],dz=positions[j+2]-prev[j+2],dist=Math.hypot(dx,dz);
+       const normalPush=Math.max(.009,-velocities[j+1]*dt);
+       const maxStatic=staticMu*normalPush;
+       if(dist<maxStatic){positions[j]=prev[j];positions[j+2]=prev[j+2];}
+       else if(dist>1e-8){
+         const delta=Math.min(dist,dynamicMu*normalPush);
+         positions[j]-=dx/dist*delta;positions[j+2]-=dz/dist*delta;
+       }
+     }
+   }
+   // Damped edge-relative velocities (only the longitudinal component).
+   const dampFactor=innerDamp*.14;
+   const deltaV=new Float32Array(velocities.length);
+   for(let e=0;e<edges.length;e++){
+     const [a,b]=edges[e],i=a*3,j=b*3;
+     const dx=positions[j]-positions[i],dy=positions[j+1]-positions[i+1],dz=positions[j+2]-positions[i+2];
+     const len=Math.hypot(dx,dy,dz)||1;
+     const relative=((positions[j]-prev[j])-(positions[i]-prev[i]))*dx/len+
+       ((positions[j+1]-prev[j+1])-(positions[i+1]-prev[i+1]))*dy/len+
+       ((positions[j+2]-prev[j+2])-(positions[i+2]-prev[i+2]))*dz/len;
+     const impulse=relative*dampFactor*.5/len;
+     deltaV[i]+=impulse*dx;deltaV[i+1]+=impulse*dy;deltaV[i+2]+=impulse*dz;
+     deltaV[j]-=impulse*dx;deltaV[j+1]-=impulse*dy;deltaV[j+2]-=impulse*dz;
+   }
+   const settling=.9994-innerDamp*.0015;
+   for(let j=0;j<positions.length;j++){
+     const correction=(positions[j]-prev[j])+deltaV[j];
+     velocities[j]=clamp(correction/dt*settling,-16,16);
+     if(!Number.isFinite(positions[j])||!Number.isFinite(velocities[j])){reset();return;}
+   }
+ }
+ let acc=0;
+ // Camera: slightly elevated studio viewpoint with exact matching picking rays.
+ const eye=[1.55,.96,7.5],focus=[0,-.27,0];
+ const forward=norm(sub(focus,eye)),right=norm(cross(forward,[0,1,0])),up=cross(right,forward);
+ const view=new Float32Array([
+ right[0],up[0],-forward[0],0,right[1],up[1],-forward[1],0,right[2],up[2],-forward[2],0,
+ -dot(right,eye),-dot(up,eye),dot(forward,eye),1
+ ]);
+ function mul(a,b){
+   const out=new Float32Array(16);
+   for(let col=0;col<4;col++)for(let row=0;row<4;row++)
+     for(let k=0;k<4;k++)out[col*4+row]+=a[k*4+row]*b[col*4+k];
+   return out;
+ }
+ let width=1,height=1,halfH=1.7,viewProj=null;
+ let sceneTex,backTex,hdrTex,depthFront,depthBack;
+ const uniformBuffer=device.createBuffer({size:256,usage:gpu.UNIFORM|gpu.COPY_DST});
+ const renderBuf=device.createBuffer({size:verts.byteLength,usage:gpu.VERTEX|gpu.COPY_DST});
+ const idxBuf=device.createBuffer({size:idx.byteLength,usage:gpu.INDEX|gpu.COPY_DST});
+ device.queue.writeBuffer(idxBuf,0,idx);
+ const wireBuf=device.createBuffer({size:edges.length*2*3*4,usage:gpu.VERTEX|gpu.COPY_DST});
+ const wireData=new Float32Array(edges.length*6);
+ const shader=id=>device.createShaderModule({code:$(id).textContent,label:id});
+ const entry=(mod,name)=>({module:mod,entryPoint:name});
+ const studio=shader("studioWGSL"),gel=shader("gelWGSL"),back=shader("backWGSL"),post=shader("postWGSL"),wire=shader("wireWGSL");
+ const meshLayout={arrayStride:36,attributes:[{shaderLocation:0,offset:0,format:"float32x3"},{shaderLocation:1,offset:12,format:"float32x3"},{shaderLocation:2,offset:24,format:"float32x3"}]};
+ const studioPipe=device.createRenderPipeline({layout:"auto",vertex:entry(studio,"vs"),fragment:{...entry(studio,"fs"),targets:[{format:"rgba16float"}]},primitive:{topology:"triangle-list"}});
+ const backPipe=device.createRenderPipeline({layout:"auto",vertex:{...entry(back,"vs"),buffers:[meshLayout]},fragment:{...entry(back,"fs"),targets:[{format:"rgba16float"}]},primitive:{topology:"triangle-list",cullMode:"front",frontFace:"ccw"},depthStencil:{format:"depth24plus",depthWriteEnabled:true,depthCompare:"greater"}});
+ const gelPipe=device.createRenderPipeline({layout:"auto",vertex:{...entry(gel,"vs"),buffers:[meshLayout]},fragment:{...entry(gel,"fs"),targets:[{format:"rgba16float"}]},primitive:{topology:"triangle-list",cullMode:"back",frontFace:"ccw"},depthStencil:{format:"depth24plus",depthWriteEnabled:true,depthCompare:"less"}});
+ const postPipe=device.createRenderPipeline({layout:"auto",vertex:entry(post,"vs"),fragment:{...entry(post,"fs"),targets:[{format}]},primitive:{topology:"triangle-list"}});
+ const wirePipe=device.createRenderPipeline({layout:"auto",vertex:{...entry(wire,"vs"),buffers:[{arrayStride:12,attributes:[{shaderLocation:0,offset:0,format:"float32x3"}]}]},fragment:{...entry(wire,"fs"),targets:[{format:"rgba16float",blend:{color:{srcFactor:"src-alpha",dstFactor:"one-minus-src-alpha",operation:"add"},alpha:{srcFactor:"one",dstFactor:"one-minus-src-alpha",operation:"add"}}}]},primitive:{topology:"line-list"},depthStencil:{format:"depth24plus",depthWriteEnabled:false,depthCompare:"less-equal"}});
+ const samp=device.createSampler({magFilter:"linear",minFilter:"linear",addressModeU:"clamp-to-edge",addressModeV:"clamp-to-edge"});
+ const nearest=device.createSampler({magFilter:"nearest",minFilter:"nearest"});
+ const studioGroup=device.createBindGroup({layout:studioPipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:uniformBuffer}}]});
+ const backGroup=device.createBindGroup({layout:backPipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:uniformBuffer}}]});
+ const wireGroup=device.createBindGroup({layout:wirePipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:uniformBuffer}}]});
+ let gelGroup,postGroup;
+ function resize(){
+   const dpr=Math.min(window.devicePixelRatio||1,1.75);
+   width=Math.max(1,Math.round(canvas.clientWidth*dpr));
+   height=Math.max(1,Math.round(canvas.clientHeight*dpr));
+   if(canvas.width===width&&canvas.height===height&&sceneTex)return;
+   canvas.width=width;canvas.height=height;
+   for(const t of [sceneTex,backTex,hdrTex,depthFront,depthBack])if(t)t.destroy();
+   const colorDesc={size:[width,height],format:"rgba16float",usage:tex.RENDER_ATTACHMENT|tex.TEXTURE_BINDING};
+   sceneTex=device.createTexture(colorDesc);backTex=device.createTexture(colorDesc);hdrTex=device.createTexture(colorDesc);
+   depthFront=device.createTexture({size:[width,height],format:"depth24plus",usage:tex.RENDER_ATTACHMENT});
+   depthBack=device.createTexture({size:[width,height],format:"depth24plus",usage:tex.RENDER_ATTACHMENT});
+   gelGroup=device.createBindGroup({layout:gelPipe.getBindGroupLayout(0),entries:[
+     {binding:0,resource:{buffer:uniformBuffer}},{binding:1,resource:samp},{binding:2,resource:sceneTex.createView()},{binding:3,resource:backTex.createView()}
+   ]});
+   postGroup=device.createBindGroup({layout:postPipe.getBindGroupLayout(0),entries:[{binding:0,resource:hdrTex.createView()},{binding:1,resource:samp}]});
+   let aspect=width/height;
+   halfH=Math.max(1.64,1.70/aspect);
+   const halfW=halfH*aspect,near=.1,far=32;
+   const projection=new Float32Array([1/halfW,0,0,0,0,1/halfH,0,0,0,0,1/(near-far),0,0,0,near/(near-far),1]);
+   viewProj=mul(projection,view);
+ }
+ function project(p){
+   const m=viewProj;
+   const x=m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12];
+   const y=m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13];
+   const w=m[3]*p[0]+m[7]*p[1]+m[11]*p[2]+m[15];
+   return [(x/w*.5+.5)*width,(.5-y/w*.5)*height];
+ }
+ function render(){
+   resize();
+   updateSkin();
+   device.queue.writeBuffer(renderBuf,0,verts);
+   const u=new Float32Array(48);
+   u.set(viewProj,0);u.set([...eye,1],16);u.set([width,height,0,0],20);
+   u.set(fruits[fruit].f,24);u.set(fruits[fruit].p,28);u.set(fruits[fruit].r,32);
+   const shadow=project([0,FLOOR,0]);
+   const scale=height/(2*halfH);
+   u.set([shadow[0]+.10*scale,shadow[1]+.04*scale,1.30*scale,.23*scale],36);
+   u.set([debug?1:0,elapsed,0,0],40);
+   device.queue.writeBuffer(uniformBuffer,0,u);
+   const encoder=device.createCommandEncoder();
+   const color=(texture,load="clear")=>({view:texture.createView(),loadOp:load,storeOp:"store",clearValue:{r:0,g:0,b:0,a:1}});
+   let pass=encoder.beginRenderPass({colorAttachments:[color(sceneTex)]});
+   pass.setPipeline(studioPipe);pass.setBindGroup(0,studioGroup);pass.draw(3);pass.end();
+   pass=encoder.beginRenderPass({colorAttachments:[color(backTex)],depthStencilAttachment:{view:depthBack.createView(),depthLoadOp:"clear",depthStoreOp:"store",depthClearValue:0}});
+   pass.setPipeline(backPipe);pass.setBindGroup(0,backGroup);pass.setVertexBuffer(0,renderBuf);pass.setIndexBuffer(idxBuf,"uint32");pass.drawIndexed(idx.length);pass.end();
+   pass=encoder.beginRenderPass({colorAttachments:[color(hdrTex)],depthStencilAttachment:{view:depthFront.createView(),depthLoadOp:"clear",depthStoreOp:"store",depthClearValue:1}});
+   pass.setPipeline(studioPipe);pass.setBindGroup(0,studioGroup);pass.draw(3);
+   pass.setPipeline(gelPipe);pass.setBindGroup(0,gelGroup);pass.setVertexBuffer(0,renderBuf);pass.setIndexBuffer(idxBuf,"uint32");pass.drawIndexed(idx.length);
+   if(debug){
+     for(let k=0;k<edges.length;k++)for(let a=0;a<2;a++)for(let j=0;j<3;j++)wireData[k*6+a*3+j]=positions[edges[k][a]*3+j];
+     device.queue.writeBuffer(wireBuf,0,wireData);
+     pass.setPipeline(wirePipe);pass.setBindGroup(0,wireGroup);pass.setVertexBuffer(0,wireBuf);pass.draw(edges.length*2);
+   }
+   pass.end();
+   pass=encoder.beginRenderPass({colorAttachments:[{view:context.getCurrentTexture().createView(),loadOp:"clear",storeOp:"store",clearValue:{r:0,g:0,b:0,a:1}}]});
+   pass.setPipeline(postPipe);pass.setBindGroup(0,postGroup);pass.draw(3);pass.end();
+   device.queue.submit([encoder.finish()]);
+ }
+ function ray(ev){
+   const rect=canvas.getBoundingClientRect();
+   const xx=2*(ev.clientX-rect.left)/rect.width-1;
+   const yy=1-2*(ev.clientY-rect.top)/rect.height;
+   const origin=eye.map((v,k)=>v+right[k]*xx*halfH*(width/height)+up[k]*yy*halfH);
+   return {origin,dir:forward};
+ }
+ function pick(ev){
+   const {origin:o,dir:d}=ray(ev);
+   let closest=Infinity,hit=null;
+   for(let k=0;k<idx.length;k+=3){
+     const a=idx[k]*3,b=idx[k+1]*3,c=idx[k+2]*3;
+     const va=surfPos.subarray(a,a+3),vb=surfPos.subarray(b,b+3),vc=surfPos.subarray(c,c+3);
+     const e1=sub(vb,va),e2=sub(vc,va),p=cross(d,e2),det=dot(e1,p);
+     if(Math.abs(det)<1e-8)continue;
+     const inv=1/det,tvec=sub(o,va),uu=dot(tvec,p)*inv;
+     if(uu<0||uu>1)continue;
+     const q=cross(tvec,e1),vv=dot(d,q)*inv;
+     if(vv<0||uu+vv>1)continue;
+     const t=dot(e2,q)*inv;
+     if(t>0&&t<closest){closest=t;hit=o.map((v,j)=>v+d[j]*t);}
+   }
+   return hit;
+ }
+ function pointerDown(ev){
+   if(ev.button!==undefined&&ev.button!==0)return;
+   const p=pick(ev);
+   if(!p)return;
+   ev.preventDefault();
+   canvas.setPointerCapture(ev.pointerId);
+   const weights=[],radius=.68;
+   for(let i=0;i<vertexCount;i++){
+     const j=i*3,dist=Math.hypot(positions[j]-p[0],positions[j+1]-p[1],(positions[j+2]-p[2])*.95);
+     if(dist<radius){
+       const w=Math.exp(-4*(dist/radius)**2);
+       weights.push({i,w,offset:[positions[j]-p[0],positions[j+1]-p[1],positions[j+2]-p[2]]});
+     }
+   }
+   grab={pointerId:ev.pointerId,point:p,target:p.slice(),attached:weights,start:[ev.clientX,ev.clientY]};
+   if(paused){paused=false;$("pause").textContent="PAUSE";}
+ }
+ function pointerMove(ev){
+   if(!grab||grab.pointerId!==ev.pointerId)return;
+   ev.preventDefault();
+   const rect=canvas.getBoundingClientRect();
+   const dx=(ev.clientX-grab.start[0])/rect.width*2*halfH*(width/height);
+   const dy=-(ev.clientY-grab.start[1])/rect.height*2*halfH;
+   let displacement=right.map((v,j)=>v*dx+up[j]*dy);
+   let distance=Math.hypot(...displacement);
+   if(distance>1.65)displacement=displacement.map(v=>v*1.65/distance);
+   grab.target=grab.point.map((v,j)=>v+displacement[j]);
+   grab.target[1]=Math.max(grab.target[1],FLOOR+.29);
+ }
+ function pointerUp(ev){if(grab&&grab.pointerId===ev.pointerId)grab=null;}
+ canvas.addEventListener("pointerdown",pointerDown);
+ canvas.addEventListener("pointermove",pointerMove);
+ canvas.addEventListener("pointerup",pointerUp);
+ canvas.addEventListener("pointercancel",pointerUp);
+ canvas.addEventListener("lostpointercapture",pointerUp);
+ function nudge(){
+   if(paused){paused=false;$("pause").textContent="PAUSE";}
+   for(let i=0;i<vertexCount;i++){
+     const j=i*3,x=positions[j],y=positions[j+1]-(BASE+.58);
+     velocities[j]+=1.45-.8*y;
+     velocities[j+1]+=3.35+.5*x;
+     velocities[j+2]+=.65*Math.sin(x*2.4);
+   }
+ }
+ $("nudge").addEventListener("click",nudge);
+ $("reset").addEventListener("click",()=>reset());
+ $("pause").addEventListener("click",()=>{paused=!paused;$("pause").textContent=paused?"RESUME":"PAUSE";});
+ $("firm").addEventListener("input",e=>{firmness=Number(e.target.value)/100;$("firmValue").textContent=e.target.value;});
+ $("damp").addEventListener("input",e=>{innerDamp=Number(e.target.value)/100;$("dampValue").textContent=e.target.value;});
+ $("mesh").addEventListener("change",e=>{debug=e.target.checked;});
+ document.querySelectorAll(".swatch").forEach(button=>button.addEventListener("click",()=>{
+   fruit=Number(button.dataset.fruit);
+   document.querySelectorAll(".swatch").forEach(b=>b.setAttribute("aria-pressed",String(b===button)));
+ }));
+ window.addEventListener("keydown",ev=>{
+   if(ev.target instanceof HTMLInputElement||ev.target instanceof HTMLButtonElement&&ev.key===" ")return;
+   const key=ev.key.toLowerCase();
+   if(key===" "){ev.preventDefault();$("pause").click();}
+   else if(key==="n")nudge();
+   else if(key==="r")reset();
+ });
+ let last=performance.now();
+ reset();
+ function frame(now){
+   try{
+     const delta=Math.min((now-last)/1000,.045);last=now;
+     if(!paused){elapsed+=delta;acc=Math.min(acc+delta,.06);}
+     const substeps=6,subDt=1/60/substeps;
+     let ticks=0;
+     while(!paused&&acc>=1/60&&ticks<3){
+       for(let i=0;i<substeps;i++)step(subDt);
+       acc-=1/60;ticks++;
+     }
+     render();
+   }catch(err){console.error("Citrus render error",err);status.textContent="RENDER ERROR — SEE CONSOLE";fallback.classList.add("on");return;}
+   requestAnimationFrame(frame);
+ }
+ requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
