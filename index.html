@@ -553,8 +553,9 @@ struct U {
      const dx=positions[j]-positions[i],dy=positions[j+1]-positions[i+1],dz=positions[j+2]-positions[i+2];
      const len=Math.hypot(dx,dy,dz)||1e-8,L=lengths[k],ratio=len/L;
      const hard=ratio>1.8||ratio<.35;
-     const lambda=-(len-L)/(2+(hard?0:edgeAlpha));
-     const correction=clamp(lambda,-.065,.065)/len;
+     const limit=ratio>1.8?1.8*L:ratio<.35?.35*L:L;
+     const lambda=-(len-limit)/(2+(hard?0:edgeAlpha));
+     const correction=clamp(lambda,-.14,.14)/len;
      for(let axis=0;axis<3;axis++){
        const dist=(axis===0?dx:axis===1?dy:dz)*correction;
        positions[i+axis]-=dist;positions[j+axis]+=dist;
