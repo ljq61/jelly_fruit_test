@@ -253,8 +253,11 @@ struct U {
  const status=document.getElementById("status");
  if(!navigator.gpu){fallback.classList.add("on");return;}
  let firstFrame=false;
+ window.__citrusRuntime={state:'initializing',frames:0,device:null,lastError:null};
  const report=(label,error)=>{
    const detail=error?.message||String(error||'Unknown GPU error');
+   window.__citrusRuntime.state='error';
+   window.__citrusRuntime.lastError=label+': '+detail;
    console.error('[Citrus]',label,detail,error);
    status.textContent=label.toUpperCase()+': '+detail.slice(0,110);
    // Keep the exact failure readable rather than leaving a black surface.
@@ -274,6 +277,7 @@ struct U {
    format=navigator.gpu.getPreferredCanvasFormat();
    context.configure({device,format,alphaMode:"opaque"});
  }catch(err){console.error(err);fallback.classList.add("on");return;}
+ window.__citrusRuntime.device=device;
  device.addEventListener('uncapturederror',ev=>report('GPU validation',ev.error));
  device.lost.then(info=>report('GPU device lost ('+info.reason+')',info.message||info));
  const gpu=GPUBufferUsage, tex=GPUTextureUsage;
@@ -719,6 +723,8 @@ struct U {
    pass.setPipeline(postPipe);pass.setBindGroup(0,postGroup);pass.draw(3);pass.end();
    device.queue.submit([encoder.finish()]);
    firstFrame=true;
+   window.__citrusRuntime.state='running';
+   window.__citrusRuntime.frames++;
  }
  function ray(ev){
    const rect=canvas.getBoundingClientRect();
