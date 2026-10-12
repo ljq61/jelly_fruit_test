@@ -394,8 +394,8 @@ struct U {
    arc.push(row);
  }
  for(let k=0;k<12;k++)for(let j=0;j<ANG;j++){
-   tri(arc[k][j],arc[k+1][j+1],arc[k+1][j]);
-   tri(arc[k][j],arc[k][j+1],arc[k+1][j+1]);
+   tri(arc[k][j],arc[k+1][j],arc[k+1][j+1]);
+   tri(arc[k][j],arc[k+1][j+1],arc[k][j+1]);
  }
  const cut=[];
  for(let k=0;k<=12;k++){
